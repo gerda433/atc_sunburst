@@ -25,11 +25,23 @@ You can add options to executable code like this
 
 The `echo: false` option disables the printing of code (only output is displayed).
 
+# Load packages
+
 ```{r}
 library(dplyr)
+library(stringr)
 library(readr)
 library(readxl)
 library(purrr)
+library(plotly)
+library(data.table)
+library(htmlwidgets)
+```
+
+# Read raw data
+
+```{r}
+
 
 # Load file originally created by Fabrício Kury :
 atc_scrape_2024 <- read_csv("atc_data/WHO ATC-DDD 2024-07-31.csv") %>%
@@ -73,6 +85,8 @@ glimpse(combined_sheet2)
 
 ```
 
+# Combine raw data
+
 ```{r}
  # Create the combined new file:
 
@@ -113,19 +127,13 @@ write_csv(all_atc, paste0("atc_data/WHO_ATC_Hierarchy_", Sys.Date(), ".csv"))
 message("CSV saved: atc_data/WHO_ATC_Hierarchy_", Sys.Date(), ".csv")
 ```
 
-Next, I need to rearrange these data:
+# Create the cleaned version
 
 ```{r}
 # Step 1: Select only main categories (ATC codes with 1–5 digits)
 atc_headings <- all_atc %>%
   filter(nchar(atc_code) <= 5) 
 
-
-```
-
-## Create atc_levels file
-
-```{r}
 # Helper: join in the ATC heading at a specific level
 join_atc_heading <- function(data, headings, level_len, new_name, by_col) {
   data %>%
@@ -159,12 +167,19 @@ atc_levels <- all_atc %>%
 write_csv(atc_levels, paste0("atc_data/WHO_ATC_Hierarchy_wide_", Sys.Date(), ".csv"))
 ```
 
-## Prepare plot
+### Read atc_levels
+
+```{r}
+# read:
+atc_levels <- WHO_ATC_Hierarchy_wide_2025_09_16 <- read_csv("atc_data/WHO_ATC_Hierarchy_wide_2025-09-16.csv")
+```
+
+# Prepare plot
 
 Next, turn it into a dataframe in the format that can be used for the plotly sunburst plot:
 
 ```{r}
-
+# I need a little work-around to get the format I need. Might be better ways out there
 # original code version:
 df <- atc_levels %>%
   mutate(value = 1) %>%
@@ -178,14 +193,14 @@ df_text <- atc_levels %>%
 
 ```
 
-### ismirsehregal's solution
+### ismirsehregal's solution to get the right plotly format for a sunburst plot
 
 Getting the correct format:
 
 ```{r}
 # From ismirsehregal on Stackoverflow:
 
-as.sunburstDF_plotly <- function(DF_plotly, value_column = NULL, add_root = FALSE, drop_na_nodes = TRUE){
+create_sunburst_data_format <- function(DF_plotly, value_column = NULL, add_root = FALSE, drop_na_nodes = TRUE){
   colNamesDF_plotly <- names(DF_plotly)
   
   if(is.data.table(DF_plotly)){
@@ -255,12 +270,11 @@ as.sunburstDF_plotly <- function(DF_plotly, value_column = NULL, add_root = FALS
 The plotly plot
 
 ```{r}
+# Apply his function to the dataset:
+hierarchyDF <- create_sunburst_data_format(df, value_column = "value", add_root = TRUE)
 
-library(data.table)
-hierarchyDF <- as.sunburstDF_plotly(df, value_column = "value", add_root = TRUE)
-
-# the next step is a little unusual, probably a better solution out there:
-hierarchyDF_text <- as.sunburstDF_plotly(df_text, value_column = "value", add_root = TRUE) %>%
+# To create the relevant hover information, the next step is a little unusual, probably a better solution out there:
+hierarchyDF_text <- create_sunburst_data_format(df_text, value_column = "value", add_root = TRUE) %>%
   mutate(
     hover_info = sapply(ids, function(x) {
       parts <- str_split(x, " - ")[[1]]   # split by " - "
@@ -277,6 +291,7 @@ sunburst_df <- hierarchyDF %>%
                                 .default = hover_info),
          labels = case_when(ids == "Total" ~ "ATC",
                                 .default = labels))
+
 
 p <- plot_ly(
   sunburst_df,
@@ -297,10 +312,6 @@ p
 Save the html:
 
 ```{r}
-
-library(htmlwidgets)
-
-
 # Export as HTML
 saveWidget(
   p,
@@ -323,7 +334,8 @@ ema_medicines <- ema_medicines_raw %>%
   select(name_of_medicine, active_substance, atc_code_human, therapeutic_indication) %>%
   mutate(active_substance = str_to_lower(active_substance), 
          therapeutic_indication = str_replace_all(therapeutic_indication, "(.{1,60})(\\s|$)", "\\1<br>")) %>%
-  filter(nchar(atc_code_human) == 7)
+  distinct(name_of_medicine, .keep_all = TRUE)
+  
 ```
 
 See if I can add it to the plot:
@@ -346,8 +358,28 @@ sum(is.na(sunburst_df$therapeutic_indication))
 I could also try to join earlier:
 
 ```{r}
-atc_ema <- atc_levels %>%
-  left_join(ema_medicines %>% select(atc_code_human, name_of_medicine), join_by(atc_code == atc_code_human)) 
+
+# two ways to join:
+atc_ema_atc_join <- atc_levels %>%
+  left_join(ema_medicines %>% 
+              select(atc_code_human, name_of_medicine) %>%
+              filter(nchar(atc_code_human) == 7), 
+  join_by(atc_code == atc_code_human)) %>%
+  distinct(atc_code, chemical_substance, name_of_medicine, .keep_all = TRUE)
+
+atc_ema_substance_join <- atc_levels %>%  
+  left_join(ema_medicines %>%
+              select(name_of_medicine, active_substance), 
+            join_by(chemical_substance == active_substance)) %>%
+    distinct(atc_code, chemical_substance, name_of_medicine, .keep_all = TRUE)
+
+atc_ema <- bind_rows(atc_ema_atc_join, atc_ema_substance_join) %>%
+  distinct(atc_code, chemical_substance, name_of_medicine, .keep_all = TRUE)
+
+# Did it matter? One way to check is to do this:
+anti_join(atc_ema_atc_join, atc_ema_substance_join)
+anti_join(atc_ema_substance_join, atc_ema_atc_join)
+# turns out it was good I joined by boh eethods.
 ```
 
 ```{r}
@@ -365,10 +397,10 @@ df_text <- atc_ema %>%
 ```
 
 ```{r}
-hierarchyDF <- as.sunburstDF_plotly(df, value_column = "value", add_root = TRUE)
+hierarchyDF <- create_sunburst_data_format(df, value_column = "value", add_root = TRUE)
 
 # the next step is a little unusual, probably a better solution out there:
-hierarchyDF_text <- as.sunburstDF_plotly(df_text, value_column = "value", add_root = TRUE) %>%
+hierarchyDF_text <- create_sunburst_data_format(df_text, value_column = "value", add_root = TRUE) %>%
   mutate(
     hover_info = sapply(ids, function(x) {
       parts <- str_split(x, " - ")[[1]]   # split by " - "
@@ -392,7 +424,7 @@ sunburst_df <- hierarchyDF %>%
 ```
 
 ```{r}
-p <- plot_ly(
+p_ema <- plot_ly(
   sunburst_df,
   ids = ~ids,
   labels = ~labels,
@@ -405,9 +437,16 @@ p <- plot_ly(
   sort = FALSE,
   rotation = 90)   # rotate 90 degrees clockwise, so top is north
 
-p
+p_ema
 ```
 
 ```{r}
+# Export as HTML
+saveWidget(
+  p_ema,
+  file = "ATC_centralised_Sunburst.html",
+  selfcontained = TRUE
+)
 
+message("Interactive sunburst exported to output/ATC_centralised_Sunburst.html")
 ```
