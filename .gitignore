@@ -1,4 +1,14 @@
-.Rproj.user
+# RStudio & R session files
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
+
+# Data folders
+medicines data/
+atc_data/
+
+# Common data file types (anywhere in the repo)
+*.csv
+*.xlsx
+*.rds
