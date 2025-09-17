@@ -327,14 +327,18 @@ message("Interactive sunburst exported to output/ATC_Sunburst.html")
 Next it would be nice if I could add indication to the hover information:
 
 ```{r}
-ema_medicines_raw <- medicines_output_medicines_en_2 <- read_excel("medicines data/medicines_output_medicines_en-2.xlsx", range = "A09:P1100")
+ema_medicines_raw <- medicines_output_medicines_en_2 <- read_excel("medicines data/medicines_output_medicines_en-2.xlsx", skip = 8)
 
-ema_medicines <- ema_medicines_raw %>%
-  janitor::clean_names()  %>%
-  select(name_of_medicine, active_substance, atc_code_human, therapeutic_indication) %>%
+ema_medicines_names <- ema_medicines_raw %>%
+  janitor::clean_names()  
+
+ema_medicines <- ema_medicines_names %>%
+  rename(therapeutic_area = therapeutic_area_me_sh) %>%
+  select(name_of_medicine, active_substance, atc_code_human, therapeutic_indication, therapeutic_area, marketing_authorisation_date) %>%
   mutate(active_substance = str_to_lower(active_substance), 
          therapeutic_indication = str_replace_all(therapeutic_indication, "(.{1,60})(\\s|$)", "\\1<br>")) %>%
-  distinct(name_of_medicine, .keep_all = TRUE)
+  distinct(name_of_medicine, .keep_all = TRUE) %>%
+  mutate(drug_information = paste0("<b>Indication(s)</b><Br>", str_replace_all(therapeutic_area, ";", "<Br>"), "<Br><Br><b>Date authorised</b><Br>", marketing_authorisation_date))
   
 ```
 
@@ -407,17 +411,19 @@ hierarchyDF_text <- create_sunburst_data_format(df_text, value_column = "value",
       str_trim(tail(parts, 1))            # take last segment, trim spaces
     })
   ) %>%
-    mutate(hover_info = str_replace(hover_info, "^(.)", toupper))
+    mutate(hover_info = str_replace(hover_info, "^(.)", toupper)) %>%
+  rename(ids_text = ids)
 ```
 
 ```{r}
 sunburst_df <- hierarchyDF %>%
-  mutate(hover_info = hierarchyDF_text$hover_info) %>%
-  arrange(desc(labels)) %>%
+  mutate(hover_info = hierarchyDF_text$hover_info,
+         ids_text = hierarchyDF_text$ids_text) %>%
+#  arrange(desc(labels)) %>%
   left_join(ema_medicines, join_by(labels == name_of_medicine)) %>%
   distinct(ids, .keep_all = TRUE) %>%
   mutate(hover_info = case_when(ids == "Total" ~ "ATC",
-                                !is.na(therapeutic_indication) ~ therapeutic_indication,
+                                !is.na(drug_information) ~ drug_information,
                                 .default = hover_info),
          labels = case_when(ids == "Total" ~ "ATC",
                                 .default = labels)) 
@@ -449,4 +455,210 @@ saveWidget(
 )
 
 message("Interactive sunburst exported to output/ATC_centralised_Sunburst.html")
+```
+
+```{r}
+
+# just trying out hovertemplate, which is interesting, but not useful right here
+p2 <- plot_ly(
+  sunburst_df,
+  ids = ~ids,
+  labels = ~labels,
+  parents = ~parents,
+  values = ~values,
+  type = "sunburst",
+  branchvalues = "total",
+  hovertext = ~hover_info,   # <- point to your custom column
+  #hoverinfo = "text", 
+  sort = FALSE,
+  rotation = 90, # rotate 90 degrees clockwise, so top is north
+  hovertemplate = paste(
+      "<b>Indication:</b><br>",
+      "%{hovertext}"
+      ))
+
+p2
+```
+
+Can I create the function I just learned?
+
+```{r}
+
+select_atc_level <- function(data, atc_level) {
+  
+  regex <- paste0(" - ", atc_level, " - ")
+  data <- sunburst_df %>%
+    filter(str_detect(ids, regex))
+    
+  p_ema <- plot_ly(
+  data,
+  ids = ~ids,
+  labels = ~labels,
+  parents = ~parents,
+  values = ~values,
+  type = "sunburst",
+  branchvalues = "total",
+  hovertext = ~hover_info,   # <- point to your custom column
+  hoverinfo = "text", 
+  sort = FALSE,
+  rotation = 90)   # rotate 90 degrees clockwise, so top is north
+  
+  p_ema
+}
+
+
+select_atc_level(sunburst_df, "A10BJ")
+```
+
+```{r}
+library(tidyr)
+
+hierarchy <- sunburst_df %>%
+  separate(ids_text, into = paste0("level", 1:10), sep = " - ", fill = "right")
+
+```
+
+```{r}
+
+
+select_category_level <- function(data, text_input) {
+  
+  
+  search_hierarchy <- function(hierarchy, term) {
+  
+  # Step 1: find all matches across levels
+  hits <- hierarchy %>%
+    filter(if_any(starts_with("level"), 
+                  ~ str_detect(.x, regex(term, ignore_case = TRUE))))
+  
+  # Step 2: identify first unique match (search across all levels)
+  first_category <- hits %>%
+    pivot_longer(cols = starts_with("level"), names_to = "level", values_to = "value") %>%
+    filter(str_detect(value, regex(term, ignore_case = TRUE))) %>%
+    distinct(value) %>%
+    slice(1) %>%
+    pull(value)
+  
+  # Step 3: keep only rows where that category is in the hierarchy path
+  hits %>%
+    filter(if_any(starts_with("level"), ~ .x == first_category))
+}
+  
+data <- search_hierarchy(hierarchy, text_input)
+
+  p_ema <- plot_ly(
+  data,
+  ids = ~ids,
+  labels = ~labels,
+  parents = ~parents,
+  values = ~values,
+  type = "sunburst",
+  branchvalues = "total",
+  hovertext = ~hover_info,   # <- point to your custom column
+  hoverinfo = "text", 
+  sort = FALSE,
+  rotation = 90)   # rotate 90 degrees clockwise, so top is north
+  
+  p_ema
+}
+
+p_ema
+select_category_level(hierarchy, "belladonna")
+```
+
+```{r}
+data <- hierarchy %>%
+  filter(if_any(starts_with("level"), ~ str_detect(.x, regex("nerv", ignore_case = TRUE))))
+```
+
+# Dual search at the same time (= brilliant)
+
+```{r}
+hierarchy <- sunburst_df %>%
+  separate(ids_text, into = paste0("level", 1:10), sep = " - ", fill = "right") %>%
+  separate(ids, into = paste0("atc_level", 1:10), sep = " - ", fill = "right", remove = FALSE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(plotly)
+library(stringr)
+
+select_category_level <- function(hierarchy, text_input = NULL, atc_input = NULL) {
+  
+  # Internal function to search hierarchy safely
+  search_hierarchy <- function(hierarchy, term_text = NULL, term_atc = NULL) {
+    
+    hits <- hierarchy
+    
+    # 1️⃣ Filter by text term if provided
+    if (!is.null(term_text)) {
+      hits <- hits %>%
+        filter(if_any(starts_with("level"), ~ str_detect(.x, regex(term_text, ignore_case = TRUE))))
+    }
+    
+    # 2️⃣ Filter by ATC code term if provided
+    if (!is.null(term_atc)) {
+      hits <- hits %>%
+        filter(if_any(starts_with("atc_level"), ~ str_detect(.x, regex(term_atc, ignore_case = TRUE))))
+    }
+    
+    # 3️⃣ Identify first unique match across both hierarchies
+    first_category <- hits %>%
+  pivot_longer(
+    cols = c(starts_with("level"), starts_with("atc_level")),
+    names_to = "level",
+    values_to = "value"
+  ) %>%
+  { 
+    df <- .
+    # Apply str_detect only if term_text or term_atc exists
+    if (!is.null(term_text) & !is.null(term_atc)) {
+      df %>% filter(str_detect(value, regex(term_text, ignore_case = TRUE)) |
+                    str_detect(value, regex(term_atc, ignore_case = TRUE)))
+    } else if (!is.null(term_text)) {
+      df %>% filter(str_detect(value, regex(term_text, ignore_case = TRUE)))
+    } else if (!is.null(term_atc)) {
+      df %>% filter(str_detect(value, regex(term_atc, ignore_case = TRUE)))
+    } else {
+      df
+    }
+  } %>%
+  distinct(value) %>%
+  slice(1) %>%
+  pull(value)
+    
+    # 4️⃣ Keep only rows where that category appears in the hierarchy path
+    hits %>%
+      filter(if_any(c(starts_with("level"), starts_with("atc_level")), ~ .x == first_category))
+  }
+  
+  # Apply search
+  data <- search_hierarchy(hierarchy, term_text = text_input, term_atc = atc_input)
+  
+  # Build sunburst
+  plot_ly(
+    data,
+    ids = ~ids,
+    labels = ~labels,
+    parents = ~parents,
+    values = ~values,
+    type = "sunburst",
+    branchvalues = "total",
+    hovertext = ~hover_info,
+    hoverinfo = "text",
+    sort = FALSE,
+    rotation = 90
+  )
+}
+
+# Search by text only
+select_category_level(hierarchy, text_input = "bcr")
+
+# Search by ATC code only
+select_category_level(hierarchy, atc_input = "J07BB")
+
+# Search by both text and ATC code
+select_category_level(hierarchy, text_input = "influenza", atc_input = "J07BB02")
 ```
