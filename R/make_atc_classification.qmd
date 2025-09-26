@@ -1,0 +1,183 @@
+---
+title: "ATC Test"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+# Load packages
+
+```{r}
+library(dplyr)
+library(stringr)
+library(readr)
+library(readxl)
+library(purrr)
+library(plotly)
+library(data.table)
+library(htmlwidgets)
+```
+
+# Read raw data
+
+```{r}
+
+
+# Load file originally created by Fabrício Kury :
+atc_scrape_2024 <- read_csv("atc_data/WHO ATC-DDD 2024-07-31.csv") %>%
+  mutate(atc_name = tolower(atc_name))
+
+# update it with more recent info from the WHO site:
+
+# List of Excel files
+files <- c(
+  "atc_data/1_temporary_and_final_atc_and_ddd_final.xlsx",
+  "atc_data/atc_ddd_new_and_alterations_2025_final.xlsx"
+)
+
+# Function to read first n sheets of a file
+read_first_sheets <- function(file, n_sheets = 6) {
+  sheets <- excel_sheets(file)[1:n_sheets]
+  sheet_list <- map(sheets, ~ read_excel(file, sheet = .x))
+  names(sheet_list) <- paste0(basename(file), "_sheet", seq_along(sheet_list))
+  sheet_list
+}
+
+# Read all files
+all_sheets_list <- map(files, read_first_sheets) %>% flatten()
+
+# Function to bind all sheets of a given index
+bind_sheets_by_index <- function(sheet_index) {
+  sheet_list <- all_sheets_list[grep(paste0("sheet", sheet_index), names(all_sheets_list))]
+  bind_rows(sheet_list)
+}
+
+# Bind each sheet index into one table
+combined_sheet1 <- bind_sheets_by_index(1)
+combined_sheet2 <- bind_sheets_by_index(2)
+combined_sheet3 <- bind_sheets_by_index(3)
+combined_sheet4 <- bind_sheets_by_index(4)
+combined_sheet5 <- bind_sheets_by_index(5)
+
+# Quick check
+glimpse(combined_sheet1)
+glimpse(combined_sheet2)
+
+```
+
+# Combine raw data
+
+```{r}
+ # Create the combined new file:
+
+atc_scrape <- bind_rows(combined_sheet1 %>% 
+            select(1:2) %>%
+            rename(atc_code = "New ATC code", 
+                   atc_name = "Substance name"), 
+          combined_sheet2 %>% 
+            select(1:2) %>%
+            rename(atc_code = "ATC code",
+                   atc_name = "New ATC level name"),
+          atc_scrape_2024)
+
+atc_scrape_remove_previous <- atc_scrape %>%
+  filter(!(atc_code %in% combined_sheet3$"Previous ATC code")) %>%
+  filter(!(atc_code %in% combined_sheet4$"ATC code"))
+
+combined_sheet3_clean <- combined_sheet3 %>% 
+             select("New ATC code", "ATC level name") %>%
+              rename(atc_code = "New ATC code",
+                     atc_name = "ATC level name") %>%
+                filter(atc_code != "deleted")
+
+combined_sheet4_clean <- combined_sheet4 %>%
+  select("ATC code", "New ATC level name") %>%
+              rename(atc_code = "ATC code",
+                     atc_name = "New ATC level name")
+
+
+all_atc <- bind_rows(atc_scrape_remove_previous, 
+                     combined_sheet3_clean, 
+                     combined_sheet4_clean) %>%
+  select(atc_code, atc_name) %>%
+  arrange(atc_code)
+
+# --- Save full hierarchy CSV ---
+write_csv(all_atc, paste0("atc_data/WHO_ATC_Hierarchy_", Sys.Date(), ".csv"))
+message("CSV saved: atc_data/WHO_ATC_Hierarchy_", Sys.Date(), ".csv")
+```
+
+# Create the cleaned version
+
+```{r}
+# Step 1: Select only main categories (ATC codes with 1–5 digits)
+atc_headings <- all_atc %>%
+  filter(nchar(atc_code) <= 5) 
+
+# Helper: join in the ATC heading at a specific level
+join_atc_heading <- function(data, headings, level_len, new_name, by_col) {
+  data %>%
+    left_join(
+      headings %>%
+        filter(nchar(atc_code) == level_len) %>%
+        rename(!!new_name := atc_name),
+      by = setNames("atc_code", by_col)
+    )
+}
+
+# Main pipeline
+atc_levels <- all_atc %>%
+  filter(nchar(atc_code) > 5) %>%
+  mutate(
+    atc_level_01 = substr(atc_code, 1, 1),
+    atc_level_03 = substr(atc_code, 1, 3),
+    atc_level_04 = substr(atc_code, 1, 4),
+    atc_level_05 = substr(atc_code, 1, 5)
+  ) %>%
+  join_atc_heading(atc_headings, 1, "anatomical_main_group_01", "atc_level_01") %>%
+  join_atc_heading(atc_headings, 3, "therapeutic_subgroup_02", "atc_level_03") %>%
+  join_atc_heading(atc_headings, 4, "pharmacological_subgroup_03", "atc_level_04") %>%
+  join_atc_heading(atc_headings, 5, "chemical_subgroup_04", "atc_level_05") %>%
+  rename(chemical_substance = atc_name) %>%
+  distinct(atc_code, .keep_all = TRUE) %>%
+  select(atc_level_01, anatomical_main_group_01, atc_level_03, therapeutic_subgroup_02, atc_level_04, pharmacological_subgroup_03, atc_level_05, chemical_subgroup_04, atc_code, chemical_substance)
+
+
+```
+
+### Write atc_levels file
+
+```{r}
+
+# this is the nice file I want:
+write_csv(atc_levels, paste0("atc_data/WHO_ATC_Hierarchy_wide_", Sys.Date(), ".csv"))
+```
+
+### Read atc_levels
+
+```{r}
+# read:
+atc_levels <- WHO_ATC_Hierarchy_wide_2025_09_16 <- read_csv("atc_data/WHO_ATC_Hierarchy_wide_2025-09-16.csv")
+```
+
+dfdf

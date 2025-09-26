@@ -1,0 +1,133 @@
+---
+title: "Visual sunburst plot of the ATC code hierarchy"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| echo: false
+
+
+
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+# Required packages
+
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(stringr)
+library(readr)
+library(readxl)
+library(purrr)
+library(plotly)
+library(data.table)
+library(htmlwidgets)
+
+source("R/functions.R")
+```
+
+### Read atc_levels
+
+This version of the ATC hierarchy has been created from the 2024 file from this place and the updates published on the WHO website
+
+```{r, message=FALSE}
+# read:
+atc_levels <- read_csv("../input/WHO_ATC_Hierarchy_wide_2025-09-16.csv") 
+```
+
+An overview of structure of the data file is given below.
+
+```{r}
+glimpse(atc_levels)
+```
+
+# Prepare plot
+
+Next, turn it into a dataframe in the format that can be used for the plotly sunburst plot:
+
+```{r}
+# I need a little work-around to get the format I need. Might be better ways out there
+# original code version:
+df <- atc_levels %>%
+  mutate(value = 1) %>%
+  select(atc_level_01, atc_level_03, atc_level_04, atc_level_05, atc_code, chemical_substance, value)
+
+# text version:
+df_text <- atc_levels %>%
+  mutate(value = 1) %>%
+  select(anatomical_main_group_01, therapeutic_subgroup_02, pharmacological_subgroup_03, chemical_subgroup_04, atc_code, chemical_substance, value)
+
+
+```
+
+## Plotly
+
+The plotly plot
+
+```{r}
+# Apply his function to the dataset:
+hierarchyDF <- create_sunburst_data_format(df, value_column = "value", add_root = TRUE)
+
+# To create the relevant hover information, the next step is a little unusual, probably a better solution out there:
+hierarchyDF_text <- create_sunburst_data_format(df_text, value_column = "value", add_root = TRUE) %>%
+  mutate(
+    hover_info = sapply(ids, function(x) {
+      parts <- str_split(x, " - ")[[1]]   # split by " - "
+      str_trim(tail(parts, 1))            # take last segment, trim spaces
+    })
+  ) %>%
+    mutate(hover_info = str_replace(hover_info, "^(.)", toupper))
+
+# now we can use the hover info in the actual dataset we want to use::      
+sunburst_df <- hierarchyDF %>%
+  mutate(hover_info = hierarchyDF_text$hover_info) %>%
+  arrange(desc(labels)) %>%
+  mutate(hover_info = case_when(ids == "Total" ~ "ATC",
+                                .default = hover_info),
+         labels = case_when(ids == "Total" ~ "ATC",
+                                .default = labels))
+
+saveRDS(sunburst_df, "input/sunburst_df.RDS")
+
+write_csv(sunburst_df, "input/sunburst_df.csv")
+
+p <- plot_ly(
+  sunburst_df,
+  ids = ~ids,
+  labels = ~labels,
+  parents = ~parents,
+  values = ~values,
+  type = "sunburst",
+  branchvalues = "total",
+  hovertext = ~hover_info,   # <- point to your custom column
+  hoverinfo = "text", 
+  sort = FALSE,
+  rotation = 90)   # rotate 90 degrees clockwise, so top is north
+
+p
+```
+
+Save the html:
+
+```{r}
+# Export as HTML
+#saveWidget(
+#  p,
+#  file = "ATC_Sunburst.html",
+#  selfcontained = TRUE
+#)
+
+#message("Interactive sunburst exported to output/ATC_Sunburst.html")
+```
+
+## 
+
+```{r}
+
+
+
+```

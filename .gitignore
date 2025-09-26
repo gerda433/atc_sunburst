@@ -5,8 +5,8 @@
 .Ruserdata
 
 # Data folders
-medicines data/
-atc_data/
+input/
+output/
 
 # Common data file types (anywhere in the repo)
 *.csv
