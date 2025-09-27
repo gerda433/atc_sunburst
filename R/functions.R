@@ -1,5 +1,8 @@
-# From ismirsehregal on Stackoverflow:
+# =============================================================================
+# ATC SUNBURST UTILITY FUNCTIONS
+# =============================================================================
 
+#' Create sunburst data format for Plotly visualization
 create_sunburst_data_format <- function(DF_plotly, value_column = NULL, add_root = FALSE, drop_na_nodes = TRUE){
   colNamesDF_plotly <- names(DF_plotly)
   
@@ -63,4 +66,59 @@ create_sunburst_data_format <- function(DF_plotly, value_column = NULL, add_root
   return(hierarchyDT)
 }
 
+# =============================================================================
+# DATA VALIDATION FUNCTIONS
+# =============================================================================
 
+#' Validate ATC code format
+validate_atc_code <- function(atc_code) {
+  if (is.na(atc_code) || nchar(atc_code) == 0) return(FALSE)
+  
+  # ATC codes should be 1-7 characters: letter followed by 0-6 alphanumeric characters
+  pattern <- "^[A-Z][A-Z0-9]{0,6}$"
+  return(grepl(pattern, toupper(atc_code)))
+}
+
+#' Check if required data files exist
+check_data_files <- function() {
+  required_files <- c(
+    "input/atc_data/WHO ATC-DDD 2024-07-31.csv",
+    "input/atc_data/1_temporary_and_final_atc_and_ddd_final.xlsx",
+    "input/atc_data/atc_ddd_new_and_alterations_2025_final.xlsx",
+    "input/medicines_output_medicines_en-2.xlsx",
+    "input/ListeOverGodkendteLaegemidler-2.xlsx"
+  )
+  
+  missing_files <- required_files[!file.exists(required_files)]
+  
+  if (length(missing_files) > 0) {
+    message("Missing required files:")
+    for (file in missing_files) {
+      message("  - ", file)
+    }
+    return(FALSE)
+  }
+  
+  return(TRUE)
+}
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+#' Get ATC hierarchy level from code length
+get_atc_level <- function(atc_code) {
+  code_length <- nchar(atc_code)
+  if (code_length <= 1) return(1)
+  if (code_length <= 3) return(2)
+  if (code_length <= 4) return(3)
+  if (code_length <= 5) return(4)
+  if (code_length <= 7) return(5)
+  return(NA)
+}
+
+#' Format ATC code for display
+format_atc_code <- function(atc_code) {
+  if (is.na(atc_code)) return(NA)
+  return(toupper(str_trim(atc_code)))
+}

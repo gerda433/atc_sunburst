@@ -1,0 +1,160 @@
+---
+title: "ATC interactive quarto"
+format: html
+server: shiny
+---
+
+## Shiny Documents
+
+This Quarto document is made interactive using Shiny. Interactive documents allow readers to modify parameters and see the results immediately. Learn more about Shiny interactive documents at <https://quarto.org/docs/interactive/shiny/>.
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change. This demonstrates how a standard R plot can be made interactive:
+```{r}
+library(dplyr)
+library(readr)
+library(tidyr)
+library(plotly)
+library(stringr)
+library(data.table)
+library(shiny)
+library(shinyjs)
+library(shinydashboard)
+```
+
+```{r}
+# read:
+atc_levels <- read_csv("input/WHO_ATC_Hierarchy_wide_2025-09-16.csv") 
+source("R/functions.R")
+```
+
+
+```{r}
+
+# I need a little work-around to get the format I need. Might be better ways out there
+# original code version:
+df <- atc_levels %>%
+  mutate(value = 1) %>%
+  select(atc_level_01, atc_level_03, atc_level_04, atc_level_05, atc_code, chemical_substance, value)
+
+# text version:
+df_text <- atc_levels %>%
+  mutate(value = 1) %>%
+  select(anatomical_main_group_01, therapeutic_subgroup_02, pharmacological_subgroup_03, chemical_subgroup_04, atc_code, chemical_substance, value)
+
+
+# Apply his function to the dataset:
+hierarchyDF <- create_sunburst_data_format(df, value_column = "value", add_root = TRUE)
+
+# To create the relevant hover information, the next step is a little unusual, probably a better solution out there:
+hierarchyDF_text <- create_sunburst_data_format(df_text, value_column = "value", add_root = TRUE) %>%
+  mutate(
+    hover_info = sapply(ids, function(x) {
+      parts <- str_split(x, " - ")[[1]]   # split by " - "
+      str_trim(tail(parts, 1))            # take last segment, trim spaces
+    })
+  ) %>%
+    mutate(hover_info = str_replace(hover_info, "^(.)", toupper)) %>%
+  mutate(ids_text = ids)
+```
+
+
+```{r}
+
+sunburst_df <- hierarchyDF %>%
+  left_join(hierarchyDF_text %>% select(ids, hover_info, ids_text), by = "ids") %>%
+  arrange(desc(labels)) %>%
+  mutate(hover_info = case_when(ids == "Total" ~ "ATC",
+                                .default = hover_info),
+         labels = case_when(ids == "Total" ~ "ATC",
+                                .default = labels))
+  
+hierarchy <- sunburst_df %>%
+  separate(ids_text, into = paste0("level", 1:10), sep = " - ", fill = "right") %>%
+  separate(ids, into = paste0("atc_level", 1:10), sep = " - ", fill = "right", remove = FALSE)
+```
+
+
+### helper function
+```{r}
+# Internal function to search hierarchy safely
+  search_hierarchy <- function(hierarchy, term_text = NULL, term_atc = NULL) {
+    
+    hits <- hierarchy
+    
+    # 1️⃣ Filter by text term if provided
+    if (!is.null(term_text)) {
+      hits <- hits %>%
+        filter(if_any(starts_with("level"), ~ str_detect(.x, regex(term_text, ignore_case = TRUE))))
+    }
+    
+    # 2️⃣ Filter by ATC code term if provided
+    if (!is.null(term_atc)) {
+      hits <- hits %>%
+        filter(if_any(starts_with("atc_level"), ~ str_detect(.x, regex(term_atc, ignore_case = TRUE))))
+    }
+    
+    # 3️⃣ Identify first unique match across both hierarchies
+    first_category <- hits %>%
+  pivot_longer(
+    cols = c(starts_with("level"), starts_with("atc_level")),
+    names_to = "level",
+    values_to = "value"
+  ) %>%
+  { 
+    df <- .
+    # Apply str_detect only if term_text or term_atc exists
+    if (!is.null(term_text) & !is.null(term_atc)) {
+      df %>% filter(str_detect(value, regex(term_text, ignore_case = TRUE)) |
+                    str_detect(value, regex(term_atc, ignore_case = TRUE)))
+    } else if (!is.null(term_text)) {
+      df %>% filter(str_detect(value, regex(term_text, ignore_case = TRUE)))
+    } else if (!is.null(term_atc)) {
+      df %>% filter(str_detect(value, regex(term_atc, ignore_case = TRUE)))
+    } else {
+      df
+    }
+  } %>%
+  distinct(value) %>%
+  slice(1) %>%
+  pull(value)
+    
+    # 4️⃣ Keep only rows where that category appears in the hierarchy path
+    hits %>%
+      filter(if_any(c(starts_with("level"), starts_with("atc_level")), ~ .x == first_category))
+  }
+```
+### wrapper
+```{r}
+# ---- Wrapper to build sunburst ----
+select_category_level <- function(hierarchy, text_input = NULL, atc_input = NULL) {
+  data <- search_hierarchy(hierarchy, term_text = text_input, term_atc = atc_input)
+  
+  plot_ly(
+    data,
+    ids = ~ids,
+    labels = ~labels,
+    parents = ~parents,
+    values = ~values,
+    type = "sunburst",
+    branchvalues = "total",
+    hovertext = ~hover_info,
+    hoverinfo = "text"
+  )
+}
+```
+# ui
+```{r}
+textInput("text", "Search text:")
+textInput("atc", "Search ATC code:")
+```
+
+# server
+```{r}
+#| context: server
+output$sunburst <- renderPlotly({
+select_category_level(hierarchy, text_input = input$text, atc_input = input$atc)
+})
+```
+
