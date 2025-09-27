@@ -135,7 +135,7 @@ ema_medicines <- ema_medicines_names %>%
          therapeutic_indication = str_replace_all(therapeutic_indication, "(.{1,60})(\\s|$)", "\\1<br>"),
          marketing_authorisation_date = format(as.Date(marketing_authorisation_date, format = "%d/%m/%Y"), format = "%d/%m/%Y")) %>%
   distinct(name_of_medicine, .keep_all = TRUE) %>%
-  mutate(drug_information = paste0("<b>", name_of_medicine, "</b> - centralised<Br>", "<b>Date authorised</b><Br>", marketing_authorisation_date, "<Br><Br><b>Indication(s)</b><Br>", str_replace_all(therapeutic_area, ";", "<Br>")))
+  mutate(drug_information = paste0("<b>", name_of_medicine, "</b> - centrally authorised (EMA)<Br>", "<b>Date authorised</b><Br>", marketing_authorisation_date, "<Br><b>Indication(s)</b><Br>", str_replace_all(therapeutic_area, ";", "<Br>")))
 ```
 
 ## DKMA data
@@ -166,7 +166,7 @@ Second, bind_rows
 
 ```{r}
 combined_ema_dkma <- bind_rows(ema_medicines, dkma_medicines) 
-
+saveRDS(combined_ema_dkma, file = "../output/combined_ema_dkma.RDS")
 
 
 
