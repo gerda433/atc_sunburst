@@ -1,0 +1,101 @@
+# ATC Hierarchy Sunburst Plot
+
+An interactive Shiny application for exploring the WHO Anatomical Therapeutic Chemical (ATC) classification system using dynamic sunburst plots. This project provides a straightforward 3-step pipeline for data preparation, processing, and visualization.
+
+## Data Sources
+
+- **WHO ATC-DDD**: Base classification system (7,537 ATC codes)
+
+The ATC source file was originally created by Fabrício Kury (2024-07-31) 
+Retrieved from https://github.com/fabkury/atcd/blob/master/WHO%20ATC-DDD%202024-07-31.csv
+Adapted and reused here for learning. Do not redistribute without attribution to Fabrício Kury. 
+
+Fabricio Kury made an excellent WHO ATC-code scraping script available, but I noticed the WHO allows only very slow scraping (a robotic 10 seconds rule). I therefore decided to use Fabricio Kury's source file to not disturb the WHO server unnecessarily by my own scrape. Instead I updated his 2024 version with the publicly available 2024 and 2025 update files from WHO. See the prepare_data.R code.
+
+- **EMA Medicines**: Centrally authorized medicines (2,553 medicines)
+The EMA Medicines source file was retrieved from https://www.ema.europa.eu/en/documents/report/medicines-output-medicines-report_en.xlsx
+
+- **DKMA Medicines**: Danish registered medicines (7,782 medicines)
+The list of approved medicines in Denmark was retrieved here: https://laegemiddelstyrelsen.dk/en/licensing/licensing-of-medicines/lists-of-authorised-and-deregistered-medicines/how-to-use-the-list-of-authorised-medicinal-products/ 
+The direct link to the DKMA xlsx file:
+ https://laegemiddelstyrelsen.dk/LinkArchive.ashx?id=0BD4960F0D7744E3BABC951431681ECC&lang=da 
+## Features
+
+
+## Project Structure
+
+```
+├── prepare_data.R              # Step 1: Data preparation and ATC hierarchy creation
+├── process_data.R              # Step 2: Visualization data preparation and medicine info
+├── run_app.R                   # Step 3: Interactive Shiny application
+├── R/
+│   └── functions.R             # Utility functions and data validation
+├── input/
+│   ├── atc_data/               # WHO ATC source files
+│   ├── medicines_output_medicines_en-2.xlsx  # EMA medicines data
+│   └── ListeOverGodkendteLaegemidler-2.xlsx  # DKMA medicines data
+└── output/
+    ├── combined_medicines.RDS  # Combined medicines database
+    └── hierarchy.RDS           # Final hierarchy for visualization
+```
+
+
+Required R packages:
+```r
+install.packages(c("shiny", "plotly", "dplyr", "tidyr", "stringr", 
+                   "readr", "readxl", "purrr", "data.table", 
+                   "htmlwidgets", "janitor"))
+```
+
+## Usage Instructions
+
+### Running the Application
+
+1. **Open RStudio**
+2. **Set working directory** to the project folder
+3. **Run the three scripts in order**:
+   ```r
+   source("prepare_data.R")
+   source("process_data.R") 
+   source("run_app.R")
+   ```
+
+## Technical Details
+
+### Data Processing Pipeline
+
+1. **Data Preparation** (`prepare_data.R`):
+Processes raw WHO ATC data into hierarchical structure
+   - Loads WHO ATC base data
+   - Processes Excel updates and alterations
+   - Creates hierarchical ATC structure
+   - Saves processed hierarchy files
+
+2. **Data Processing** (`process_data.R`):
+Creates visualization-ready data with medicine information
+   - Processes EMA and DKMA medicines data
+   - Creates sunburst-compatible data format
+   - Adds rich hover information
+   - Saves final visualization data
+
+3. **Shiny Application** (`run_app.R`):
+Interactive Shiny application with search functionality
+   - Loads processed data
+   - Creates interactive sunburst plot
+   - Implements search and filtering functionality
+   - Launches web application
+
+Supporting files:
+- **`R/functions.R`**: Utility functions for data validation and sunburst formatting
+
+
+# Features
+- **Interactive Sunburst Visualization**: Explore the complete ATC hierarchy with full 360-degree display
+- **Advanced Search Functionality**:
+  - **ATC Code Search**: Filter by ATC codes (e.g., "A", "N05", "M02AB")
+  - **Text Search**: Search category descriptions (e.g., "nervous", "antibiotic")
+  - **Combined Filtering**: Use both search methods simultaneously
+- **Rich Hover Information**: Detailed drug information from EMA and DKMA databases
+- **Simple Sequential Pipeline**: Easy-to-follow 3-step process
+- **Intuitive Layout**: ATC codes displayed in alphabetical order with A codes at North (top)
+- **Real-time Updates**: Dynamic filtering with instant plot updates
