@@ -1,16 +1,17 @@
 # ATC Hierarchy Sunburst Plot
 
-An interactive Shiny application for exploring the WHO Anatomical Therapeutic Chemical (ATC) classification system using dynamic, searchable sunburst plots. This project provides a straightforward 3-step pipeline for data preparation, processing, and visualization.
+An interactive Shiny application for exploring and searching the WHO Anatomical Therapeutic Chemical (ATC) classification system using a dynamic sunburst plot. This project provides a simple 3-step pipeline for data preparation, processing, and visualization.
 
 ## Data Sources
 
 - **WHO ATC-DDD**: Base classification system (7,537 ATC codes)
 
-The ATC source file was originally created by Fabrício Kury (2024-07-31) 
+The ATC source file was originally created by Fabrício Kury (date: 2024-07-31).
 Retrieved from https://github.com/fabkury/atcd/blob/master/WHO%20ATC-DDD%202024-07-31.csv
 Adapted and reused here for learning. Do not redistribute without attribution to Fabrício Kury. 
 
-Fabricio Kury made an excellent WHO ATC-code scraping script available, but I noticed the WHO allows only very slow scraping (a robotic 10 seconds rule). I therefore decided to use Fabricio Kury's source file to not disturb the WHO server unnecessarily by my own scrape. Instead I updated his 2024 version with the publicly available 2024 and 2025 update files from WHO. See the prepare_data.R code.
+Fabricio Kury also made an excellent WHO ATC-code scraping script available, but I noticed the WHO allows only very slow scraping (a robotic 10 seconds crawl delay rule). I therefore decided to use Fabricio Kury's 2024 ATC file to not disturb the WHO server unnecessarily with my own scrape. Instead I updated his 2024 version with the publicly available 2024 and 2025 update files from WHO, retrieved from here: https://atcddd.fhi.no/lists_of__temporary_atc_ddds_and_alterations/ 
+See the prepare_data.R code for more information.
 
 - **EMA Medicines**: Centrally authorized medicines (2,553 medicines)
 The EMA Medicines source file was retrieved from https://www.ema.europa.eu/en/documents/report/medicines-output-medicines-report_en.xlsx
@@ -18,8 +19,7 @@ The EMA Medicines source file was retrieved from https://www.ema.europa.eu/en/do
 - **DKMA Medicines**: Danish registered medicines (7,782 medicines)
 The list of approved medicines in Denmark was retrieved here: https://laegemiddelstyrelsen.dk/en/licensing/licensing-of-medicines/lists-of-authorised-and-deregistered-medicines/how-to-use-the-list-of-authorised-medicinal-products/ 
 The direct link to the DKMA xlsx file:
- https://laegemiddelstyrelsen.dk/LinkArchive.ashx?id=0BD4960F0D7744E3BABC951431681ECC&lang=da
-
+ https://laegemiddelstyrelsen.dk/LinkArchive.ashx?id=0BD4960F0D7744E3BABC951431681ECC&lang=da 
 ## Features
 
 
