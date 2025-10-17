@@ -1,6 +1,6 @@
 # ATC Hierarchy Sunburst Plot
 
-An interactive Shiny application for exploring the WHO Anatomical Therapeutic Chemical (ATC) classification system using dynamic sunburst plots. This project provides a straightforward 3-step pipeline for data preparation, processing, and visualization.
+An interactive Shiny application for exploring the WHO Anatomical Therapeutic Chemical (ATC) classification system using dynamic, searchable sunburst plots. This project provides a straightforward 3-step pipeline for data preparation, processing, and visualization.
 
 ## Data Sources
 
@@ -18,7 +18,8 @@ The EMA Medicines source file was retrieved from https://www.ema.europa.eu/en/do
 - **DKMA Medicines**: Danish registered medicines (7,782 medicines)
 The list of approved medicines in Denmark was retrieved here: https://laegemiddelstyrelsen.dk/en/licensing/licensing-of-medicines/lists-of-authorised-and-deregistered-medicines/how-to-use-the-list-of-authorised-medicinal-products/ 
 The direct link to the DKMA xlsx file:
- https://laegemiddelstyrelsen.dk/LinkArchive.ashx?id=0BD4960F0D7744E3BABC951431681ECC&lang=da 
+ https://laegemiddelstyrelsen.dk/LinkArchive.ashx?id=0BD4960F0D7744E3BABC951431681ECC&lang=da
+
 ## Features
 
 
@@ -87,15 +88,3 @@ Interactive Shiny application with search functionality
 
 Supporting files:
 - **`R/functions.R`**: Utility functions for data validation and sunburst formatting
-
-
-# Features
-- **Interactive Sunburst Visualization**: Explore the complete ATC hierarchy with full 360-degree display
-- **Advanced Search Functionality**:
-  - **ATC Code Search**: Filter by ATC codes (e.g., "A", "N05", "M02AB")
-  - **Text Search**: Search category descriptions (e.g., "nervous", "antibiotic")
-  - **Combined Filtering**: Use both search methods simultaneously
-- **Rich Hover Information**: Detailed drug information from EMA and DKMA databases
-- **Simple Sequential Pipeline**: Easy-to-follow 3-step process
-- **Intuitive Layout**: ATC codes displayed in alphabetical order with A codes at North (top)
-- **Real-time Updates**: Dynamic filtering with instant plot updates
