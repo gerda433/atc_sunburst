@@ -1,6 +1,7 @@
 # =============================================================================
 # ATC SUNBURST UTILITY FUNCTIONS
 # =============================================================================
+# The function below is from the following source:
 
 #' Create sunburst data format for Plotly visualization
 create_sunburst_data_format <- function(DF_plotly, value_column = NULL, add_root = FALSE, drop_na_nodes = TRUE){
