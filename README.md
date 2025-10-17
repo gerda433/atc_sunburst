@@ -29,8 +29,7 @@ The direct link to the DKMA xlsx file:
 ├── prepare_data.R              # Step 1: Data preparation and ATC hierarchy creation
 ├── process_data.R              # Step 2: Visualization data preparation and medicine info
 ├── run_app.R                   # Step 3: Interactive Shiny application
-├── R/
-│   └── functions.R             # Utility functions and data validation
+├── functions.R                 # Utility functions and data validation
 ├── input/
 │   ├── atc_data/               # WHO ATC source files
 │   ├── medicines_output_medicines_en-2.xlsx  # EMA medicines data
@@ -87,4 +86,4 @@ Interactive Shiny application with search functionality
    - Launches web application
 
 Supporting files:
-- **`R/functions.R`**: Utility functions for data validation and sunburst formatting
+- **`functions.R`**: Utility functions for data validation and sunburst formatting

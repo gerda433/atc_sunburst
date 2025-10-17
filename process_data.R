@@ -18,7 +18,7 @@ suppressPackageStartupMessages({
 })
 
 # Source utility functions
-source("R/functions.R")
+source("functions.R")
 
 # Load ATC hierarchy data
 message("Loading ATC hierarchy data...")

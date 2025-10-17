@@ -14,7 +14,7 @@ suppressPackageStartupMessages({
 })
 
 # Source utility functions
-source("R/functions.R")
+source("functions.R")
 
 # Load base ATC data
 message("Loading base ATC data...")
@@ -23,6 +23,7 @@ atc_scrape_2024 <- read_csv("input/atc_data/WHO ATC-DDD 2024-07-31.csv") %>%
 message("✓ Loaded ", nrow(atc_scrape_2024), " base ATC records")
 
 # Define Excel files for updates
+# Source: https://atcddd.fhi.no/lists_of__temporary_atc_ddds_and_alterations/
 files <- c(
   "input/atc_data/1_temporary_and_final_atc_and_ddd_final.xlsx",
   "input/atc_data/atc_ddd_new_and_alterations_2025_final.xlsx"
