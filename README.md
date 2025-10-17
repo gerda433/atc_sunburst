@@ -6,6 +6,11 @@ An interactive Shiny application for exploring and searching the WHO Anatomical 
 
 - **WHO ATC-DDD**: Base classification system (7,537 ATC codes)
 
+**Source files used:**
+- `WHO ATC-DDD 2024-07-31.csv` - Base ATC classification data
+- `temporary_and_final_atc_and_ddd_final.xlsx` - 2024 updates and alterations
+- `atc_ddd_new_and_alterations_2025_final.xlsx` - 2025 updates and alterations
+
 The ATC source file was originally created by Fabrício Kury (date: 2024-07-31).
 Retrieved from https://github.com/fabkury/atcd/blob/master/WHO%20ATC-DDD%202024-07-31.csv
 Adapted and reused here for learning. Do not redistribute without attribution to Fabrício Kury. 
@@ -32,6 +37,9 @@ The direct link to the DKMA xlsx file:
 ├── functions.R                 # Utility functions and data validation
 ├── input/
 │   ├── atc_data/               # WHO ATC source files
+│   │   ├── WHO ATC-DDD 2024-07-31.csv
+│   │   ├── temporary_and_final_atc_and_ddd_final.xlsx
+│   │   └── atc_ddd_new_and_alterations_2025_final.xlsx
 │   ├── medicines_output_medicines_en-2.xlsx  # EMA medicines data
 │   └── ListeOverGodkendteLaegemidler-2.xlsx  # DKMA medicines data
 └── output/
