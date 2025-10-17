@@ -2,6 +2,9 @@
 
 An interactive Shiny application for exploring and searching the WHO Anatomical Therapeutic Chemical (ATC) classification system using a dynamic sunburst plot. This project provides a simple 3-step pipeline for data preparation, processing, and visualization.
 
+To see the ATC Sunburst Plot, go here:
+https://hellegerdaolsen.shinyapps.io/atc_sunburst/
+
 ## Data Sources
 
 - **WHO ATC-DDD**: Base classification system (7,537 ATC codes)
