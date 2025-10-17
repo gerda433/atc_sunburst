@@ -15,7 +15,7 @@ https://hellegerdaolsen.shinyapps.io/atc_sunburst/
 - `atc_ddd_new_and_alterations_2025_final.xlsx` - 2025 updates and alterations
 
 The ATC source file was originally created by Fabrício Kury (date: 2024-07-31).
-Retrieved from https://github.com/fabkury/atcd/blob/master/WHO%20ATC-DDD%202024-07-31.csv
+Retrieved from https://github.com/fabkury/atcd and https://github.com/fabkury/atcd/blob/master/WHO%20ATC-DDD%202024-07-31.csv
 Adapted and reused here for learning. Do not redistribute without attribution to Fabrício Kury. 
 
 Fabricio Kury also made an excellent WHO ATC-code scraping script available, but I noticed the WHO allows only very slow scraping (a robotic 10 seconds crawl delay rule). I therefore decided to use Fabricio Kury's 2024 ATC file to not disturb the WHO server unnecessarily with my own scrape. Instead I updated his 2024 version with the publicly available 2024 and 2025 update files from WHO, retrieved from here: https://atcddd.fhi.no/lists_of__temporary_atc_ddds_and_alterations/ 
